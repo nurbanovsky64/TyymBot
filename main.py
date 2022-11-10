@@ -1,7 +1,6 @@
 import discord
 import requests
 import json
-import random
 from io import BytesIO
 import urllib.request as urllib2
 import urllib.error
@@ -48,29 +47,36 @@ async def on_message(message):
         request = urllib2.Request(url)
         request.add_header('User-Agent', '&lt;User-Agent&gt;')
         playerData = json.loads(urllib2.urlopen(request).read())
-        playerID = playerData["Results"][0]["ID"]
 
-        #Take the ID received and perform a query to receive the rest of the character's info
-        request = urllib2.Request("https://xivapi.com/character/" + str(playerID))
-        request.add_header('User-Agent', '&lt;User-Agent&gt;')
-        playerData = json.loads(urllib2.urlopen(request).read())
+        if playerData['Results']:
+            playerID = playerData["Results"][0]["ID"]
 
-        #Check if in an FC
-        if playerData['Character']['FreeCompanyName']:
-            playerFC = playerData['Character']['FreeCompanyName']
+            #Take the ID received and perform a query to receive the rest of the character's info
+            request = urllib2.Request("https://xivapi.com/character/" + str(playerID))
+            request.add_header('User-Agent', '&lt;User-Agent&gt;')
+            playerData = json.loads(urllib2.urlopen(request).read())
+
+            #Check if in an FC
+            if playerData['Character']['FreeCompanyName']:
+                playerFC = playerData['Character']['FreeCompanyName']
+            else:
+                playerFC = "None"
+            
+            #Retrieve info that's always present
+            playerImg = playerData['Character']['Portrait']
+            playerServer = playerData['Character']['Server']
+
+            #Build an embed with the character information
+            embed = discord.Embed(title = playerName, color = discord.Color.blue())
+
+            embed.add_field(name="Server", value=playerServer)
+            embed.add_field(name="Free Company", value=playerFC)
+            embed.set_image(url = playerImg)
+
+            #Send the embed to the channel
+            await message.channel.send(embed = embed)
         else:
-            playerFC = "None"
-        
-        #Retrieve info that's always present
-        playerImg = playerData['Character']['Portrait']
-        playerServer = playerData['Character']['Server']
-
-        #Send the character image to the channel
-        image = BytesIO(requests.get(playerImg).content)
-        await message.channel.send(file=discord.File(image, "fashion.png"))
-
-        #Send the other info to the channel
-        await message.channel.send(playerName + " -- Server: " + playerServer + " -- FC: " + playerFC)
+            await message.channel.send("User not found!")
 
 token = ""
 client.run(token)
